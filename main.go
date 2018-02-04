@@ -5,11 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
-	"go/parser"
-	"go/token"
-	"log"
 	"os"
 	"strings"
+	"github.com/zhanbei/go-erd/libs"
 )
 
 //
@@ -28,15 +26,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	dotRender(os.Stdout, inspectDir(*path))
+	dotRender(os.Stdout, libs.InspectDir(*path))
 }
 
-type namedType struct {
-	Ident *ast.Ident
-	Type  ast.Expr
-}
-
-func dotRender(out *os.File, pkgTypes map[string]map[string]namedType) {
+func dotRender(out *os.File, pkgTypes map[string]map[string]libs.NamedType) {
 	fmt.Fprintf(out, "digraph %q { \n", "GoERD")
 
 	var buf bytes.Buffer
@@ -69,7 +62,7 @@ func dotRender(out *os.File, pkgTypes map[string]map[string]namedType) {
 				fmt.Fprintf(out, " \"node-%s\" [shape=rectangle,label=\"%s\"];\n", typ.Ident.Name, escape(label))
 			case *ast.MapType:
 				var label = fmt.Sprintf(`%s %s`, typ.Ident.Name, toString(t))
-				fmt.Fprintf(out, " \"node-%s\" [shape=rectangle,label=\"%s\"];\n", typ.Ident.Name, escape(label))
+				fmt.Fprintf(out, " \"node-%snamedType\" [shape=rectangle,label=\"%s\"];\n", typ.Ident.Name, escape(label))
 			case *ast.InterfaceType:
 				fmt.Fprintf(&buf, `%s interface|`, typ.Ident.Name)
 				for i, f := range t.Methods.List {
@@ -161,50 +154,6 @@ func dotRender(out *os.File, pkgTypes map[string]map[string]namedType) {
 		fmt.Fprintf(out, "}\n")
 	}
 	fmt.Fprintf(out, "}\n\n")
-}
-
-func inspectDir(path string) map[string]map[string]namedType {
-	var (
-		fset        = token.NewFileSet()
-		filter      = func(n os.FileInfo) bool { return true }
-		pkgmap, err = parser.ParseDir(fset, path, filter, 0)
-
-		types = make(map[string]map[string]namedType)
-	)
-
-	if err != nil {
-		log.Fatal("parser error:", err)
-	}
-
-	for pkgName, pkg := range pkgmap {
-		types[pkgName] = make(map[string]namedType)
-
-		for fname, f := range pkg.Files {
-			fmt.Fprintln(os.Stderr, "File:", fname)
-
-			ast.Inspect(f, func(n ast.Node) bool {
-				switch nodeType := n.(type) {
-				// skip comments
-				case *ast.CommentGroup, *ast.Comment:
-					return false
-				case *ast.TypeSpec:
-					types[pkgName][nodeType.Name.Name] = namedType{
-						Ident: nodeType.Name,
-						Type:  nodeType.Type,
-					}
-					return false
-				}
-
-				return true
-			})
-		}
-
-		// for n, _ := range pkg.Imports {
-		// 	inspectDir(n)
-		// }
-	}
-
-	return types
 }
 
 func escape(s string) string {
