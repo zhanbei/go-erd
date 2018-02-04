@@ -22,5 +22,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	libs.RenderDot(os.Stdout, libs.InspectDir(*path))
+	pkgTypes := libs.InspectDir(*path)
+	libs.RenderDotGraph(os.Stdout, pkgTypes)
 }

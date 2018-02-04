@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func RenderDot(out *os.File, pkgTypes map[string]map[string]NamedType) {
+func RenderDotGraph(out *os.File, pkgTypes map[string]map[string]NamedType) {
 	fmt.Fprintf(out, "digraph %q { \n", "GoERD")
 
 	for pkg, types := range pkgTypes {
